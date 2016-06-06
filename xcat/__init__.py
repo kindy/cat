@@ -40,6 +40,8 @@ class Xcat(object):
             J='do_json_d',
             y='do_yaml_e',
             Y='do_yaml_d',
+            p='do_pickle_e',
+            P='do_pickle_d',
             m='do_msgpack_e',
             M='do_msgpack_d',
             r='do_repr_e',
@@ -98,6 +100,14 @@ class Xcat(object):
         import zlib
         return zlib.decompress(buf)
 
+    def do_pickle_e(self, buf):
+        import cPickle
+        return cPickle.dumps(buf)
+
+    def do_pickle_d(self, buf):
+        import cPickle
+        return cPickle.loads(buf)
+
     def do_yaml_e(self, buf):
         import yaml
         return yaml.dump(buf, indent=2 if self.do_pretty else None)
@@ -128,7 +138,7 @@ class Xcat(object):
 
         assert isinstance(buf, xray.Dataset)
 
-        with tempfile.NamedTemporaryFile('w') as f:
+        with tempfile.NamedTemporaryFile('w+') as f:
             fname = f.name
             buf.to_netcdf(fname)
 

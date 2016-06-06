@@ -4,14 +4,14 @@ from distutils.core import setup
 
 
 setup(
-    name='xcat',
+    name='kcat',
     version='0.1',
     author='Kindy Lin',
-    url='https://github.com/kindy/xcat',
+    url='https://github.com/kindy/kcat',
     packages=[
-        'xcat',
+        'kcat',
     ],
     scripts=[
-        'bin/xcat',
+        'bin/kcat',
     ],
 )

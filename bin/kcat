@@ -2,11 +2,11 @@
 
 import sys
 
-from xcat import Xcat
+from kcat import Kcat
 
 
 def main():
-    Xcat(sys.argv[1:]).run()
+    Kcat(sys.argv[1:]).run()
 
 
 if __name__ == '__main__':

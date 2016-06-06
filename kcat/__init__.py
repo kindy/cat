@@ -5,7 +5,7 @@ import os
 import getopt
 
 
-class Xcat(object):
+class Kcat(object):
     do_pretty = None
 
     def __init__(self, args):

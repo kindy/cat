@@ -8,7 +8,7 @@ import operator as op
 import getopt
 
 
-VERSION = '0.1'
+VERSION = '0.2'
 
 
 EXIT_OK = 0

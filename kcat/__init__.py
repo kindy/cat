@@ -2,6 +2,9 @@
 
 import sys
 import os
+import re
+import operator as op
+
 import getopt
 
 
@@ -60,7 +63,6 @@ class Kcat(object):
 
     def parse_opt(self):
         args = self.args
-
 
         short_opt = ''.join(self.processor_maps.keys())
         short_opt = short_opt + 'h'
@@ -180,15 +182,37 @@ class Kcat(object):
 
         return xray.open_dataset(f)
 
+    @classmethod
+    def get_globals_(cls, buf):
+        globals_ = {
+            'buf': buf,
+
+            'op': op,
+            're': re,
+        }
+
+        try:
+            import numpy as np
+            import pandas as pd
+            import xray as xray
+
+            globals_.update({
+                'np': np,
+                'pd': pd,
+                'xray': xray,
+            })
+        except:
+            pass
+
+        return globals_
+
     def make_exp(self, exp):
         code = compile(exp, '<--exp>{}'.format(exp), 'eval', 0, True)
 
         def exp_fn(buf):
             # print 'run exp:', exp
-            globals_ = {
-                'buf': buf,
-            }
-            buf = eval(code, globals_)
+
+            buf = eval(code, self.get_globals_(buf))
 
             return buf
 

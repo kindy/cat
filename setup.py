@@ -2,10 +2,12 @@
 
 from distutils.core import setup
 
+from kcat import VERSION
+
 
 setup(
     name='kcat',
-    version='0.1',
+    version=VERSION,
     author='Kindy Lin',
     url='https://github.com/kindy/kcat',
     packages=[

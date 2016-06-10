@@ -5,8 +5,36 @@ import os
 import getopt
 
 
+VERSION = '0.1'
+
+
+EXIT_OK = 0
+EXIT_UNKNOW_OPT = 1
+EXIT_KB_INT = 130
+EXIT_BROKEN_PIPE = 129
+
+
 class Kcat(object):
     do_pretty = None
+    out_file = None
+
+    processor_maps = dict(
+        J='do_json_d',
+        M='do_msgpack_d',
+        N='do_netcdf_load',
+        P='do_pickle_d',
+        R='do_eval',
+        Y='do_yaml_d',
+        Z='do_zlib_decompress',
+
+        j='do_json_e',
+        m='do_msgpack_e',
+        n='do_netcdf_save',
+        p='do_pickle_e',
+        r='do_repr',
+        y='do_yaml_e',
+        z='do_zlib_compress',
+    )
 
     def __init__(self, args):
         self.args = args
@@ -19,7 +47,7 @@ class Kcat(object):
                 try:
                     self.process(sys.stdin, processors)
                 except KeyboardInterrupt:
-                    sys.exit(130)  # from cat
+                    sys.exit(EXIT_KB_INT)  # from cat
             else:
                 if not os.path.exists(fname):
                     continue
@@ -33,52 +61,48 @@ class Kcat(object):
     def parse_opt(self):
         args = self.args
 
-        processor_maps = dict(
-            z='do_compress',
-            Z='do_decompress',
-            j='do_json_e',
-            J='do_json_d',
-            y='do_yaml_e',
-            Y='do_yaml_d',
-            p='do_pickle_e',
-            P='do_pickle_d',
-            m='do_msgpack_e',
-            M='do_msgpack_d',
-            r='do_repr_e',
-            n='do_netcdf_save',
-            N='do_netcdf_load',
-        )
 
-        short_opt = ''.join(processor_maps.keys())
+        short_opt = ''.join(self.processor_maps.keys())
         short_opt = short_opt + 'h'
-        opts, args = self.get_opt(args, short_opt, [
-            'pretty',
-            'str',
+        long_opt = [
             'exp=',
-            'help',
+            'str',
+
+            'pretty',
+
             'if=',
-        ])
+            'of=',
+
+            'help',
+        ]
+        opts, args = self.get_opt(args, short_opt, long_opt)
 
         processors = []
         in_files = []
+        out_file = None
         for opt, arg in opts:
-            if opt in ('--pretty',):
-                self.do_pretty = True
-            elif opt[1:] in processor_maps:
-                processors.append(getattr(self, processor_maps[opt[1:]]))
+            if opt[1:] in self.processor_maps:    # -j / -J / ...
+                processors.append(getattr(self, self.processor_maps[opt[1:]]))
             elif opt == '--exp':
                 processors.append(self.make_exp(arg))
             elif opt == '--str':
                 processors.append(self.do_str)
+            elif opt == '--pretty':
+                self.do_pretty = True
             elif opt == '--if':
                 in_files.append(arg)
-            elif opt in ('-h', '--help',):
+            elif opt == '--of':
+                out_file = arg
+            elif opt == '-h' or opt == '--help':
                 usage()
-                sys.exit(0)
+                sys.exit(EXIT_OK)
             else:
-                print 'Unknow opt for v: %s' % opt
+                print 'Unknow option: %s' % opt
                 usage()
-                sys.exit(1)
+                sys.exit(EXIT_UNKNOW_OPT)
+
+        if out_file:
+            self.out_file = out_file
 
         args = in_files + args
         if not args:
@@ -89,14 +113,18 @@ class Kcat(object):
     def do_str(self, buf):
         return str(buf)
 
-    def do_repr_e(self, buf):
+    def do_repr(self, buf):
         return repr(buf)
 
-    def do_compress(self, buf):
+    def do_eval(self, buf):
+        globals_ = {}
+        return eval(buf, globals_)
+
+    def do_zlib_compress(self, buf):
         import zlib
         return zlib.compress(buf)
 
-    def do_decompress(self, buf):
+    def do_zlib_decompress(self, buf):
         import zlib
         return zlib.decompress(buf)
 
@@ -157,10 +185,10 @@ class Kcat(object):
 
         def exp_fn(buf):
             # print 'run exp:', exp
-            globs = {
+            globals_ = {
                 'buf': buf,
             }
-            buf = eval(code, globs)
+            buf = eval(code, globals_)
 
             return buf
 
@@ -172,13 +200,16 @@ class Kcat(object):
             buf = p(buf)
 
         try:
-            sys.stdout.write(buf)
+            if self.out_file:
+                with open(self.out_file, 'wb') as f:
+                    f.write(buf)
+            else:
+                sys.stdout.write(buf)
         except IOError as ex:
             if ex.errno == 32:  # IOError: [Errno 32] Broken pipe
-                sys.exit(129)
-
-            raise
-            # sys.stderr.write(repr(dir(ex)))
+                sys.exit(EXIT_BROKEN_PIPE)
+            else:
+                raise
 
 
 def usage(cmd=None):
@@ -186,26 +217,39 @@ def usage(cmd=None):
         cmd = sys.argv[0]
 
     print r"""
-    {0:s} [<options>] [<filename>...]
-      options:
-        -Z      - zlib decompress
-        -z      - zlib compress
-        -j      - json encode
-        -J      - json decode
-        -y      - yaml encode
-        -Y      - yaml decode
-        -m      - msgpack encode
-        -M      - msgpack decode
-        -r      - repr
-        -R      - HOLD
-        -N      - netcdf load
-        -n      - netcdf save
-        --if=   - input file (instead of args)
-        --exp=  - run custom expression on buf
-        --str   - convert with str()
-                  equall to --exp='str(buf)'
-        --pretty - encode in pretty format
-      filename:
-        filename
-        -
-""".format(cmd)
+kcat v{1:s}
+usage: {0:s} [<options>] [<filename>...]
+
+  options:
+    -h
+    --help  - this help
+
+    -J      - json decode
+    -M      - msgpack decode
+    -N      - netcdf load
+    -P      - py unpickle
+    -R      - eval()
+    -Y      - yaml decode
+    -Z      - zlib decompress
+
+    -j      - json encode
+    -m      - msgpack encode
+    -n      - netcdf save
+    -p      - py pickle
+    -r      - repr()
+    -y      - yaml encode
+    -z      - zlib compress
+
+    --exp=  - run custom expression on buf
+    --str   - convert with str()
+              equall to --exp='str(buf)'
+
+    --pretty - encode in pretty format
+
+    --if=   - input file (instead of args)
+    --of=   - out file (be careful with multiple --if, last output will be saved)
+
+  filename:
+    filename
+    -
+""".format(cmd, VERSION).lstrip()

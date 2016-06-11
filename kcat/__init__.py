@@ -182,27 +182,38 @@ class Kcat(object):
 
         return xray.open_dataset(f)
 
-    @classmethod
-    def get_globals_(cls, buf):
-        globals_ = {
-            'buf': buf,
+    _default_globals = None
 
-            'op': op,
-            're': re,
-        }
+    @property
+    def default_globals(self):
+        if self._default_globals is None:
+            self._default_globals = {
+                'op': op,
+                're': re,
+            }
 
-        try:
-            import numpy as np
-            import pandas as pd
-            import xray as xray
+            try:
+                import numpy as np
+                import pandas as pd
+                try:
+                    import xarray as xray
+                except ImportError:
+                    import xray as xray
 
-            globals_.update({
-                'np': np,
-                'pd': pd,
-                'xray': xray,
-            })
-        except:
-            pass
+                self._default_globals.update({
+                    'np': np,
+                    'pd': pd,
+                    'xr': xray,
+                })
+            except ImportError:
+                pass
+
+        return self._default_globals
+
+    def make_globals(self, **kwargs):
+        globals_ = {}
+        globals_.update(self.default_globals)
+        globals_.update(kwargs)
 
         return globals_
 
@@ -212,7 +223,7 @@ class Kcat(object):
         def exp_fn(buf):
             # print 'run exp:', exp
 
-            buf = eval(code, self.get_globals_(buf))
+            buf = eval(code, self.make_globals(buf=buf))
 
             return buf
 
@@ -265,6 +276,12 @@ usage: {0:s} [<options>] [<filename>...]
     -z      - zlib compress
 
     --exp=  - run custom expression on buf
+              we can use those modules:
+                * re - py regexp
+                * op - py operator
+                * np - numpy
+                * pd - pandas
+                * xr - xarray (xray)
     --str   - convert with str()
               equall to --exp='str(buf)'
 

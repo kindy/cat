@@ -1,5 +1,34 @@
 # Kcat
 
+Kcat is a tool to covert and quick view data file (usually work with Python).
+
+
+## Why
+
+We have lots of file is saved as a.json.z (which is compressed by python's zlib,
+it's very hard to debug/read those files).
+
+with this tool, we can simplely use `kcat --if=a.json.z -Z` to see the json string.
+
+Also, we can do some action on data like this:
+
+```bash
+kcat --if=a.json.z -ZJ --exp='[val for key, val in buf if key in (2, 5)]' --str
+```
+
+
+# Install
+
+The source code is hosted on GitHub at: http://github.com/kindy/kcat .
+
+Publish on pypi: https://pypi.python.org/pypi/kcat/ .
+
+Can be install via pip:
+
+```
+pip install kcat
+```
+
 
 # Usage
 
@@ -49,6 +78,7 @@ usage: /usr/local/bin/kcat [<options>] [<filename>...]
     -
 ```
 
+
 # Examples
 
 generate some data and save as format netCDF:
@@ -78,3 +108,9 @@ Coordinates:
   * dim_1    (dim_1) int64 0 1 2
   * dim_2    (dim_2) int64 0 1 2 3
 ```
+
+# Copyright and License
+
+Copyright 2016, Kindy Lin
+
+Licensed under the GPL v3.
